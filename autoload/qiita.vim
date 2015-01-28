@@ -305,7 +305,13 @@ function! s:list_action()
   endif
 endfunction
 
-function! s:list_user_items(api, user)
+function! s:list_user_items(api, user, team)
+  " echomsg '--------------------'
+  " echomsg api
+  " echomsg user
+  " echomsg team
+  " return 0
+
   let winnum = bufwinnr(bufnr('qiita-list'))
   if winnum != -1
     if winnum != bufwinnr('%')
@@ -350,7 +356,7 @@ function! qiita#Qiita(...)
   redraw
 
   let ls = ''
-  let team = 0
+  let team = ''
   let uuid = ''
   let editpost = 0
   let deletepost = 0
@@ -364,8 +370,7 @@ function! qiita#Qiita(...)
     elseif arg =~ '^\(-l\|--list\)$\C'
       let ls = api.url_name
     elseif arg =~ '^\(-t\|--team\)$\C'
-      echomsg '----------'
-      let team = 1
+      let team = '1'
     elseif arg =~ '^\(-e\|--edit\)$\C'
       let fname = expand("%:p")
       let uuid = matchstr(fname, '.*qiita:\zs[a-z0-9]\+\ze$')
@@ -377,8 +382,8 @@ function! qiita#Qiita(...)
     elseif arg !~ '^-'
       if len(ls) > 0
         let ls = arg
-      elseif team == 1
-        echomsg team
+      elseif len(team) > 0
+        let team = arg
       elseif arg =~ '^[0-9a-z]\+$\C'
         let uuid = arg
       else
@@ -394,10 +399,8 @@ function! qiita#Qiita(...)
   endfor
   unlet args
 
-  return 0
-
-  if len(ls) > 0
-    call s:list_user_items(api, ls)
+  if len(ls) > 0 || len(team) > 0
+    call s:list_user_items(api, ls, team)
   else
     if editpost
       let title = getline(1)
