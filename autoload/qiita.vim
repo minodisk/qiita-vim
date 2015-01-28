@@ -336,8 +336,8 @@ function! s:list_user_items(api, user)
   setlocal nomodified
   setlocal nomodifiable
   syntax match SpecialKey /^[a-z0-9]\+:/he=e-1
-  let b:qiita_url_name = a:api.url_name 
-  let b:qiita_token = a:api.token 
+  let b:qiita_url_name = a:api.url_name
+  let b:qiita_token = a:api.token
   nnoremap <silent> <buffer> <cr> :call <SID>list_action()<cr>
 
   nohlsearch
@@ -350,6 +350,7 @@ function! qiita#Qiita(...)
   redraw
 
   let ls = ''
+  let team = 0
   let uuid = ''
   let editpost = 0
   let deletepost = 0
@@ -362,6 +363,9 @@ function! qiita#Qiita(...)
       return
     elseif arg =~ '^\(-l\|--list\)$\C'
       let ls = api.url_name
+    elseif arg =~ '^\(-t\|--team\)$\C'
+      echomsg '----------'
+      let team = 1
     elseif arg =~ '^\(-e\|--edit\)$\C'
       let fname = expand("%:p")
       let uuid = matchstr(fname, '.*qiita:\zs[a-z0-9]\+\ze$')
@@ -373,6 +377,8 @@ function! qiita#Qiita(...)
     elseif arg !~ '^-'
       if len(ls) > 0
         let ls = arg
+      elseif team == 1
+        echomsg team
       elseif arg =~ '^[0-9a-z]\+$\C'
         let uuid = arg
       else
@@ -387,6 +393,8 @@ function! qiita#Qiita(...)
     endif
   endfor
   unlet args
+
+  return 0
 
   if len(ls) > 0
     call s:list_user_items(api, ls)
