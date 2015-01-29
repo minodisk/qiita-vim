@@ -98,7 +98,7 @@ endfunction
 
 function! s:user.items(team)
   let params = {'token': self.token}
-  if len(team) > 0
+  if len(a:team) > 0
     let params['team_url_name'] = a:team
   endif
   let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/users/%s/items', self.url_name), params).content)
@@ -301,7 +301,7 @@ endfunction
 
 function! s:list_action()
   let line = getline('.')
-  let mx = '^\([a-z0-9]\+\)\ze:'
+  let mx = '^\zs\[\([a-z0-9]\+\)\]\ze\([a-z0-9]\+\)\ze:'
   let uuid = matchstr(line, mx)
 
   echomsg '-----------'
@@ -331,7 +331,7 @@ function! s:list_user_items(api, user, team)
     silent %d _
     redraw | echon 'Listing items... '
     let items = a:api.user(a:user).items(a:team)
-    call setline(1, split(join(map(items, '"[" . v:team_url_name . "]" . v:val.uuid . ": " . webapi#html#decodeEntityReference(v:val.title)'), "\n"), "\n"))
+    call setline(1, split(join(map(items, '"[" . v:val.team_url_name . "]" . v:val.uuid . ": " . webapi#html#decodeEntityReference(v:val.title)'), "\n"), "\n"))
   catch
     bw!
     redraw
