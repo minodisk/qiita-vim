@@ -96,8 +96,10 @@ function! s:user.item(uuid)
   return items[0]
 endfunction
 
-function! s:user.items()
-  let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/users/%s/items', self.url_name), {'token': self.token}).content)
+function! s:user.items(team)
+  let params = {'token': self.token}
+  let params['team_url_name'] = a:team
+  let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/users/%s/items', self.url_name), params).content)
   if type(res) == 4 && has_key(res, 'error')
     throw res.error
   endif
@@ -305,7 +307,7 @@ function! s:list_action()
   endif
 endfunction
 
-function! s:list_user_items(api, user)
+function! s:list_user_items(api, user, team)
   let winnum = bufwinnr(bufnr('qiita-list'))
   if winnum != -1
     if winnum != bufwinnr('%')
@@ -321,7 +323,7 @@ function! s:list_user_items(api, user)
     let old_undolevels = &undolevels
     silent %d _
     redraw | echon 'Listing items... '
-    let items = a:api.user(a:user).items()
+    let items = a:api.user(a:user).items(a:team)
     call setline(1, split(join(map(items, 'v:val.uuid . ": " . webapi#html#decodeEntityReference(v:val.title)'), "\n"), "\n"))
   catch
     bw!
@@ -350,7 +352,7 @@ function! qiita#Qiita(...)
   redraw
 
   let ls = ''
-  let team = 0
+  let team = ''
   let uuid = ''
   let editpost = 0
   let deletepost = 0
@@ -364,8 +366,7 @@ function! qiita#Qiita(...)
     elseif arg =~ '^\(-l\|--list\)$\C'
       let ls = api.url_name
     elseif arg =~ '^\(-t\|--team\)$\C'
-      echomsg '----------'
-      let team = 1
+      let team = '1'
     elseif arg =~ '^\(-e\|--edit\)$\C'
       let fname = expand("%:p")
       let uuid = matchstr(fname, '.*qiita:\zs[a-z0-9]\+\ze$')
@@ -377,8 +378,9 @@ function! qiita#Qiita(...)
     elseif arg !~ '^-'
       if len(ls) > 0
         let ls = arg
-      elseif team == 1
-        echomsg team
+      elseif team == '1'
+        let ls = api.url_name
+        let team = arg
       elseif arg =~ '^[0-9a-z]\+$\C'
         let uuid = arg
       else
@@ -394,10 +396,8 @@ function! qiita#Qiita(...)
   endfor
   unlet args
 
-  return 0
-
-  if len(ls) > 0
-    call s:list_user_items(api, ls)
+  if len(ls) > 0 || len(team) > 0
+    call s:list_user_items(api, ls, team)
   else
     if editpost
       let title = getline(1)
