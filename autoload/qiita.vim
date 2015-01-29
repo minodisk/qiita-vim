@@ -96,8 +96,10 @@ function! s:user.item(uuid)
   return items[0]
 endfunction
 
-function! s:user.items()
-  let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/users/%s/items', self.url_name), {'token': self.token}).content)
+function! s:user.items(team)
+  let params = {'token': self.token}
+  let params['team_url_name'] = a:team
+  let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/users/%s/items', self.url_name), params).content)
   if type(res) == 4 && has_key(res, 'error')
     throw res.error
   endif
@@ -306,12 +308,6 @@ function! s:list_action()
 endfunction
 
 function! s:list_user_items(api, user, team)
-  " echomsg '--------------------'
-  " echomsg api
-  " echomsg user
-  " echomsg team
-  " return 0
-
   let winnum = bufwinnr(bufnr('qiita-list'))
   if winnum != -1
     if winnum != bufwinnr('%')
@@ -327,7 +323,7 @@ function! s:list_user_items(api, user, team)
     let old_undolevels = &undolevels
     silent %d _
     redraw | echon 'Listing items... '
-    let items = a:api.user(a:user).items()
+    let items = a:api.user(a:user).items(a:team)
     call setline(1, split(join(map(items, 'v:val.uuid . ": " . webapi#html#decodeEntityReference(v:val.title)'), "\n"), "\n"))
   catch
     bw!
