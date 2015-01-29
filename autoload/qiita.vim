@@ -98,7 +98,9 @@ endfunction
 
 function! s:user.items(team)
   let params = {'token': self.token}
-  let params['team_url_name'] = a:team
+  if len(team) > 0
+    let params['team_url_name'] = a:team
+  endif
   let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/users/%s/items', self.url_name), params).content)
   if type(res) == 4 && has_key(res, 'error')
     throw res.error
@@ -301,6 +303,11 @@ function! s:list_action()
   let line = getline('.')
   let mx = '^\([a-z0-9]\+\)\ze:'
   let uuid = matchstr(line, mx)
+
+  echomsg '-----------'
+  echomsg uuid
+  return 0
+
   if len(uuid)
     let api = qiita#createApi(b:qiita_url_name, b:qiita_token)
     call s:open_item(api, uuid)
@@ -324,7 +331,7 @@ function! s:list_user_items(api, user, team)
     silent %d _
     redraw | echon 'Listing items... '
     let items = a:api.user(a:user).items(a:team)
-    call setline(1, split(join(map(items, 'v:val.uuid . ": " . webapi#html#decodeEntityReference(v:val.title)'), "\n"), "\n"))
+    call setline(1, split(join(map(items, '"[" . v:team_url_name . "]" . v:val.uuid . ": " . webapi#html#decodeEntityReference(v:val.title)'), "\n"), "\n"))
   catch
     bw!
     redraw
@@ -379,6 +386,7 @@ function! qiita#Qiita(...)
       if len(ls) > 0
         let ls = arg
       elseif len(team) > 0
+        let ls = api.url_name
         let team = arg
       elseif arg =~ '^[0-9a-z]\+$\C'
         let uuid = arg
