@@ -57,8 +57,12 @@ function! s:api.post_item(params)
   return item
 endfunction
 
-function! s:api.item(uuid)
-  let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/items/%s', a:uuid)).content)
+function! s:api.item(uuid, team)
+  let params = {'token': self.token}
+  if len(a:team) > 0
+    let params['team_url_name'] = a:team
+  endif
+  let res = webapi#json#decode(webapi#http#get(printf('https://qiita.com/api/v1/items/%s', a:uuid), params).content)
   if has_key(res, 'error')
     throw res.error
   endif
@@ -236,7 +240,13 @@ function! s:fix_tags(tags)
   endfor
 endfunction
 
-function! s:write_item(api, uuid, title, content)
+function! s:write_item(api, team, uuid, title, content)
+  echomsg '--------------'
+  echomsg a:team
+  echomsg a:uuid
+  echomsg a:title
+  return 0
+
   if len(a:uuid)
     redraw | echon 'Updating item... '
     let item = a:api.item(a:uuid)
@@ -274,8 +284,9 @@ function! s:write_action(fname)
   endif
 endfunction
 
-function! s:open_item(api, uuid)
-  let winnum = bufwinnr(bufnr('qiita:'.a:uuid))
+function! s:open_item(api, team, uuid)
+  let fname = printf('qiita:%s:%s', a:team, a:uuid)
+  let winnum = bufwinnr(bufnr(fname))
   if winnum != -1
     if winnum != bufwinnr('%')
       exe winnum 'wincmd w'
@@ -284,14 +295,14 @@ function! s:open_item(api, uuid)
   else
     exec 'silent noautocmd new'
     setlocal noswapfile
-    exec 'noautocmd file qiita:'.a:uuid
+    exec 'noautocmd file ' . fname
   endif
   filetype detect
   silent %d _
   echon 'Getting item... '
   redraw
 
-  let item = a:api.item(a:uuid)
+  let item = a:api.item(a:uuid, a:team)
   call setline(1, [webapi#html#decodeEntityReference(item.title)]+split(item.raw_body, "\n"))
   setlocal buftype=acwrite bufhidden=delete noswapfile
   setlocal nomodified
@@ -303,17 +314,12 @@ function! s:list_action()
   let line = getline('.')
   let mx = '^\[\([a-z0-9\-]\+\)\]\([a-z0-9]\+\):'
   let matched = matchlist(line, mx)
-  let team = matched[0]
-  let uuid = matched[1]
-
-  echomsg '------------'
-  echomsg team
-  echomsg uuid
-  return 0
+  let team = matched[1]
+  let uuid = matched[2]
 
   if len(uuid)
     let api = qiita#createApi(b:qiita_url_name, b:qiita_token)
-    call s:open_item(api, uuid)
+    call s:open_item(api, team, uuid)
   endif
 endfunction
 
@@ -379,11 +385,15 @@ function! qiita#Qiita(...)
       let team = '1'
     elseif arg =~ '^\(-e\|--edit\)$\C'
       let fname = expand("%:p")
-      let uuid = matchstr(fname, '.*qiita:\zs[a-z0-9]\+\ze$')
+      let list = matchlist(fname, '.*qiita:\([a-z0-9\-]\+\):\([a-z0-9]\+\)$')
+      let team = list[1]
+      let uuit = list[2]
       let editpost = 1
     elseif arg =~ '^\(-d\|--delete\)$\C'
       let fname = expand("%:p")
-      let uuid = matchstr(fname, '.*qiita:\zs[a-z0-9]\+\ze$')
+      let list = matchlist(fname, '.*qiita:\([a-z0-9\-]\+\):\([a-z0-9]\+\)$')
+      let team = list[1]
+      let uuit = list[2]
       let deletepost = 1
     elseif arg !~ '^-'
       if len(ls) > 0
@@ -412,15 +422,15 @@ function! qiita#Qiita(...)
     if editpost
       let title = getline(1)
       let content = join(getline(2, line('$')), "\n")
-      call s:write_item(api, uuid, title, content)
+      call s:write_item(api, team, uuid, title, content)
     elseif deletepost
-      call s:delete_item(api, uuid)
+      call s:delete_item(api, team, uuid)
     elseif len(uuid) > 0
-      call s:open_item(api, uuid)
+      call s:open_item(api, team, uuid)
     else
       let title = getline(1)
       let content = join(getline(2, line('$')), "\n")
-      call s:write_item(api, '', title, content)
+      call s:write_item(api, team, '', title, content)
     endif
   endif
   return 1
