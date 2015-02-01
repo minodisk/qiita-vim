@@ -301,10 +301,13 @@ endfunction
 
 function! s:list_action()
   let line = getline('.')
-  let mx = '^\zs\[\([a-z0-9]\+\)\]\ze\([a-z0-9]\+\)\ze:'
-  let uuid = matchstr(line, mx)
+  let mx = '^\[\([a-z0-9\-]\+\)\]\([a-z0-9]\+\):'
+  let matched = matchlist(line, mx)
+  let team = matched[0]
+  let uuid = matched[1]
 
-  echomsg '-----------'
+  echomsg '------------'
+  echomsg team
   echomsg uuid
   return 0
 
